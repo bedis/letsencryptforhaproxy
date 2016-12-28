@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# LICENSE: GNU LESSER GENERAL PUBLIC LICENSE Version 2.1, February 1999
+
+if [ ! -z "$DEBUG" ]; then
+  set -x
+  DEBUG=
+fi
+
+ACMEHOME="/root/.acme.sh/"
+HAPROXYCERTSHOME="/etc/haproxy/certs"
+ACMEOPTIONS="--standalone --httpport 88"
+DOMLIST=""
+KEYLENGTHLIST="2048 ec-256"
+HAPROXY_SOCKET="/var/run/haproxy/socket"
+#TEST="--test"
+
+for D in $DOMLIST
+do
+  for K in $KEYLENGTHLIST
+  do
+    echo "### Processing $D - $K ###"
+    case "$K" in
+      ec-*)
+        KEYEXT="ecdsa"
+        ;;
+      *)
+        KEYEXT="rsa"
+        ;;
+    esac
+
+    if [ -d $ACMEHOME/${D} -a "$ACMEHOME/${D}" != "/" ]; then
+      rm -rf $ACMEHOME/${D}
+    fi
+
+    if [ -d $ACMEHOME/${D}.${KEYEXT} ]; then
+      mv $ACMEHOME/${D}.${KEYEXT} $ACMEHOME/${D}
+    else
+      continue
+    fi
+
+    OCSPURL=$(openssl x509 -in $ACMEHOME/${D}/${D}.cer -noout -ocsp_uri)
+    OCSPHOST=$(echo $OCSPURL | awk -F'/' '{ print $3 }')
+
+    openssl ocsp -noverify -issuer $ACMEHOME/${D}/ca.cer -cert $ACMEHOME/${D}/${D}.cer -no_nonce \
+      -url $OCSPURL -host $OCSPHOST -header "HOST" "$OCSPHOST" \
+      -respout $ACMEHOME/${D}/${D}.ocsp
+
+    cp $ACMEHOME/${D}/${D}.ocsp $HAPROXYCERTSHOME/${D}.pem.${KEYEXT}.ocsp
+
+    OCSP64=$(base64 /etc/haproxy/certs/etherpad.bedis9.net.pem.ecdsa.ocsp | tr -d '\n')
+    echo "set ssl ocsp-response $OCSP64" | socat stdio ${HAPROXY_SOCKET}
+
+    mv $ACMEHOME/${D} $ACMEHOME/${D}.${KEYEXT} 
+    echo
+  done
+done
+

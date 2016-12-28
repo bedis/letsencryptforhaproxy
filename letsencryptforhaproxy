@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# LICENSE: GNU LESSER GENERAL PUBLIC LICENSE Version 2.1, February 1999
+
+if [ ! -z "$DEBUG" ]; then
+  set -x
+  DEBUG=
+fi
+
+ACMEHOME="/root/.acme.sh/"
+HAPROXYCERTSHOME="/etc/haproxy/certs"
+ACMEOPTIONS="--standalone --httpport 88"
+DOMLIST=""
+KEYLENGTHLIST="2048 ec-256"
+#TEST="--test"
+
+for D in $DOMLIST
+do
+  for K in $KEYLENGTHLIST
+  do
+    case "$K" in
+      ec-*)
+        KEYEXT=ecdsa
+        ;;
+      *)
+        KEYEXT=rsa
+        ;;
+    esac
+
+    if [ -d $ACMEHOME/${D} -a "$ACMEHOME/${D}" != "/" ]; then
+      rm -rf $ACMEHOME/${D}
+    fi
+    if [ -d $ACMEHOME/${D}.${KEYEXT} ]; then
+      mv $ACMEHOME/${D}.${KEYEXT} $ACMEHOME/${D}
+      ACMEACTION="--renew"
+    else
+      ACMEACTION="--issue"
+    fi
+    $ACMEHOME/acme.sh $TEST $ACMEOPTIONS $ACMEACTION -d $D --keylength $K
+    cat $ACMEHOME/${D}/${D}.cer $ACMEHOME/${D}/ca.cer $ACMEHOME/${D}/${D}.key > $HAPROXYCERTSHOME/${D}.${KEYEXT}
+    mv $ACMEHOME/${D} $ACMEHOME/${D}.${KEYEXT} 
+    echo
+  done
+done
+
