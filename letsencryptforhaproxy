@@ -40,7 +40,7 @@ do
       ACMEACTION="--issue"
     fi
     $ACMEHOME/acme.sh $TEST $ACMEOPTIONS $ACMEACTION -d $D $ACMEKEY
-    cat $CERTDIR/fullchain.cer $CERTDIR/${D}.key > $HAPROXYCERTSHOME/${D}.${KEYEXT}
+    cat $CERTDIR/fullchain.cer $CERTDIR/${D}.key > $HAPROXYCERTSHOME/${D}.pem.${KEYEXT}
     echo
   done
 done
