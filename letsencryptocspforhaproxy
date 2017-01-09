@@ -48,7 +48,7 @@ do
 
     cp $ACMEHOME/${D}/${D}.ocsp $HAPROXYCERTSHOME/${D}.pem.${KEYEXT}.ocsp
 
-    OCSP64=$(base64 /etc/haproxy/certs/etherpad.bedis9.net.pem.ecdsa.ocsp | tr -d '\n')
+    OCSP64=$(base64 $HAPROXYHOME/${D}.pem.${KEYEXT}.ocsp | tr -d '\n')
     echo "set ssl ocsp-response $OCSP64" | socat stdio ${HAPROXY_SOCKET}
 
     mv $ACMEHOME/${D} $ACMEHOME/${D}.${KEYEXT} 
