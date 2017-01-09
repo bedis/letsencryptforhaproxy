@@ -20,25 +20,27 @@ do
   do
     case "$K" in
       ec-*)
-        KEYEXT=ecdsa
+        ACMEKEY="--keylength ec-256"
+        KEYEXT="ecc"
+        CERTDIR=$ACMEHOME/${D}_ecc
         ;;
       *)
-        KEYEXT=rsa
+        ACMEKEY="--keylength 2048"
+        KEYEXT="rsa"
+        CERTDIR=$ACMEHOME/${D}
         ;;
     esac
 
-    if [ -d $ACMEHOME/${D} -a "$ACMEHOME/${D}" != "/" ]; then
-      rm -rf $ACMEHOME/${D}
-    fi
-    if [ -d $ACMEHOME/${D}.${KEYEXT} ]; then
-      mv $ACMEHOME/${D}.${KEYEXT} $ACMEHOME/${D}
+    if [ -d $CERTDIR ]; then
       ACMEACTION="--renew"
+      if [ "$KEYEXT" = "ecc" ]; then
+        ACMEKEY="--ecc"
+      fi
     else
       ACMEACTION="--issue"
     fi
-    $ACMEHOME/acme.sh $TEST $ACMEOPTIONS $ACMEACTION -d $D --keylength $K
-    cat $ACMEHOME/${D}/${D}.cer $ACMEHOME/${D}/ca.cer $ACMEHOME/${D}/${D}.key > $HAPROXYCERTSHOME/${D}.${KEYEXT}
-    mv $ACMEHOME/${D} $ACMEHOME/${D}.${KEYEXT} 
+    $ACMEHOME/acme.sh $TEST $ACMEOPTIONS $ACMEACTION -d $D $ACMEKEY
+    cat $CERTDIR/fullchain.cer $CERTDIR/${D}.key > $HAPROXYCERTSHOME/${D}.${KEYEXT}
     echo
   done
 done
