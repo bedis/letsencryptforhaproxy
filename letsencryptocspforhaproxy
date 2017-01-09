@@ -22,36 +22,31 @@ do
     echo "### Processing $D - $K ###"
     case "$K" in
       ec-*)
-        KEYEXT="ecdsa"
+        KEYEXT="ecc"
+        CERTDIR=$ACMEHOME/${D}_ecc
         ;;
       *)
         KEYEXT="rsa"
+        CERTDIR=$ACMEHOME/${D}
         ;;
     esac
 
-    if [ -d $ACMEHOME/${D} -a "$ACMEHOME/${D}" != "/" ]; then
-      rm -rf $ACMEHOME/${D}
-    fi
-
-    if [ -d $ACMEHOME/${D}.${KEYEXT} ]; then
-      mv $ACMEHOME/${D}.${KEYEXT} $ACMEHOME/${D}
-    else
+    if [ ! -d $CERTDIR ]; then
       continue
     fi
 
-    OCSPURL=$(openssl x509 -in $ACMEHOME/${D}/${D}.cer -noout -ocsp_uri)
+    OCSPURL=$(openssl x509 -in $CERTDIR/${D}.cer -noout -ocsp_uri)
     OCSPHOST=$(echo $OCSPURL | awk -F'/' '{ print $3 }')
 
-    openssl ocsp -noverify -issuer $ACMEHOME/${D}/ca.cer -cert $ACMEHOME/${D}/${D}.cer -no_nonce \
+    openssl ocsp -noverify -issuer $CERTDIR/ca.cer -cert $CERTDIR/${D}.cer -no_nonce \
       -url $OCSPURL -host $OCSPHOST -header "HOST" "$OCSPHOST" \
-      -respout $ACMEHOME/${D}/${D}.ocsp
+      -respout $CERTDIR/${D}.ocsp
 
-    cp $ACMEHOME/${D}/${D}.ocsp $HAPROXYCERTSHOME/${D}.pem.${KEYEXT}.ocsp
+    cp $CERTDIR/${D}.ocsp $HAPROXYHOME/${D}.pem.${KEYEXT}.ocsp
 
     OCSP64=$(base64 $HAPROXYHOME/${D}.pem.${KEYEXT}.ocsp | tr -d '\n')
     echo "set ssl ocsp-response $OCSP64" | socat stdio ${HAPROXY_SOCKET}
 
-    mv $ACMEHOME/${D} $ACMEHOME/${D}.${KEYEXT} 
     echo
   done
 done
